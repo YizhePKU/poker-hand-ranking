@@ -1,4 +1,4 @@
-(ns clojure-hello.hands
+(ns poker-hand-ranking.core
   (:require [clojure.math.combinatorics :as math]))
 
 (defn n-of
