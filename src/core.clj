@@ -109,114 +109,28 @@
         (pair? cards) "Pair"
         :else "High card"))
 
-(def input
-  [[nil nil nil nil nil nil nil nil nil]
-   [nil nil nil nil nil nil nil nil nil]
-   [nil nil nil nil 1   nil nil nil nil]
-   [nil nil nil nil nil 8   nil nil nil]
-   [nil nil nil nil nil nil 9   nil nil]
-   [nil nil nil nil nil nil nil 8   nil]
-   [nil nil nil nil nil nil nil nil nil]
-   [nil nil nil nil nil nil nil nil nil]
-   [5   nil 4   nil nil nil nil nil nil]])
+(require '[clojure.string :as str]
+         '[clojure.walk :as walk])
 
-(def . nil)
+(defmacro reverse-it
+  [form]
+  (walk/postwalk #(if (symbol? %)
+                    (symbol (str/reverse (name %)))
+                    %)
+                 form))
 
-(def input2
-  [[. . . 9 . . . . 3]
-   [. . . 5 . 8 6 . .]
-   [1 6 7 . . . 5 . .]
-   [5 . . 1 . . 2 4 .]
-   [. . . . . . . . .]
-   [. 4 9 . . 2 . . 5]
-   [. . 3 . . . 4 6 2]
-   [. . 4 2 . 1 . . .]
-   [6 . . . . 9 . . .]])
+(defn ensure-seq
+  [x]
+  (if (seq? x) x (list x)))
 
-(defn max-element-default-zero
-  [xs]
-  (if (seq xs)
-    (apply max xs)
-    0))
+(defn insert-second
+  "Insert x as the second element in seq y, or combine x and y as a seq."
+  [x y]
+  (if (seq? y)
+    (list* (first y) x (rest y))
+    (list x y)))
 
-(defn no-dups?
-  [xs]
-  (-> xs
-      frequencies
-      (dissoc nil)
-      vals
-      max-element-default-zero
-      (<= 1)))
-
-(defn extract-squares
-  [sudoku]
-  (for [i (range 3)
-        j (range 3)]
-    (for [di (range 3)
-          dj (range 3)]
-      (get-in sudoku [(+ (* 3 i) di) (+ (* 3 j) dj)]))))
-
-(defn valid-sudoku?
-  [sudoku]
-  (every? no-dups? (concat sudoku
-                           (apply map vector sudoku)
-                           (extract-squares sudoku))))
-
-(defn index-of
-  [xs v]
-  (let [i (.indexOf xs v)]
-    (if (neg? i)
-      nil
-      i)))
-
-(defn first-space
-  [sudoku]
-  (first (remove #(get-in sudoku %)
-                 (for [i (range 9)
-                       j (range 9)]
-                   [i j]))))
-
-(defn values
-  []
-  (repeatedly #(inc (rand-int 9))))
-
-(defn rand-value [] (inc (rand-int 9)))
-
-(require '[clojure.pprint :refer [pprint]])
-
-(defn solve
-  [sudoku]
-  (pprint sudoku)
-  (let [space (first-space sudoku)]
-    (if-not space
-      sudoku
-      (some identity
-            (for [v (range 1 10)
-                  :let [filled (assoc-in sudoku space v)]
-                  :when (valid-sudoku? filled)]
-              (solve filled))))))
-
-(defn rand-choice
-  [xs]
-  {:pre [(not (nil? xs))
-         (seq xs)]}
-  ((vec xs) (rand-int (count xs))))
-
-(defn solve-rand
-  [sudoku]
-  (pprint sudoku)
-  (let [space (first-space sudoku)]
-    (if-not space
-      sudoku
-      (let [choices (for [v (range 1 10)
-                          :let [filled (assoc-in sudoku space v)]
-                          :when (valid-sudoku? filled)]
-                      filled)]
-        (if (seq choices)
-          (solve-rand (rand-choice choices))
-          nil)))))
-
-(defn try-solve-rand
-  [sudoku]
-  (some identity
-        (repeatedly #(solve-rand sudoku))))
+(defmacro thread
+  ([x] x)
+  ([x y] (insert-second x y))
+  ([x y & ys] `(thread (thread ~x ~y) ~@ys)))
