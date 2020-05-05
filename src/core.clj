@@ -110,27 +110,39 @@
         :else "High card"))
 
 (require '[clojure.string :as str]
-         '[clojure.walk :as walk])
+         '[clojure.walk :as walk]
+         '[clojure.xml :as xml]
+         '[clojure.java.io :as io]
+         '[clojure.edn :as edn])
 
-(defmacro reverse-it
-  [form]
-  (walk/postwalk #(if (symbol? %)
-                    (symbol (str/reverse (name %)))
-                    %)
-                 form))
+(def balance
+  "<balance>
+    <accountId>3764882</accountId>
+    <lastAccess>20120121</lastAccess>
+    <currentBalance>80.12389</currentBalance>
+   </balance>")
 
-(defn ensure-seq
-  [x]
-  (if (seq? x) x (list x)))
+(defn parse
+  [s]
+  (with-open [stream (io/input-stream (.getBytes s))]
+    (into {} (for [line (:content (xml/parse stream))]
+               [(:tag line) (edn/read-string (first (:content line)))]))))
 
-(defn insert-second
-  "Insert x as the second element in seq y, or combine x and y as a seq."
-  [x y]
-  (if (seq? y)
-    (list* (first y) x (rest y))
-    (list x y)))
+(defn separate-words
+  [s]
+  (str/join " " (map str/capitalize (re-seq #".[a-z]*" s))))
 
-(defmacro thread
-  ([x] x)
-  ([x y] (insert-second x y))
-  ([x y & ys] `(thread (thread ~x ~y) ~@ys)))
+(defn display-balance
+  [m]
+  (doseq [[k v] m]
+    (print (separate-words (name k)))
+    (print ": ")
+    (println (if (double? v)
+               (format "%.2f" v)
+               v))))
+
+(defmacro formap
+  [seq-exprs key-expr value-expr]
+  `(into {}
+         (for ~seq-exprs
+           [~key-expr ~value-expr])))
